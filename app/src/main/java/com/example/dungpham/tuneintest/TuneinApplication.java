@@ -4,17 +4,21 @@ import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 
+import com.example.dungpham.tuneintest.model.BaseElement;
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
+
+import java.util.List;
+
+import rx.Observable;
 
 /**
  * Created by dungpham on 4/5/16.
  */
 public class TuneinApplication extends Application {
-    private static Context mContext;
-    private static final String mBaseUrl = "http://opml.radiotime.com/Browse.ashx";
     public static TuneinApplication mInstance;
     private Handler mMainThreadHandler;
+    protected static Observable<List<BaseElement>> mListElementObserver;
 
     public TuneinApplication() {
         super();
@@ -35,5 +39,13 @@ public class TuneinApplication extends Application {
 
     public Handler getMainThreadHandler() {
         return mMainThreadHandler;
+    }
+
+    public Observable<List<BaseElement>> getListElementObserver() {
+        return mListElementObserver;
+    }
+
+    public void setListElementObserver(Observable<List<BaseElement>> observer) {
+        this.mListElementObserver = observer;
     }
 }

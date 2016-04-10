@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.MenuItem;
 
 import com.example.dungpham.tuneintest.R;
+import com.example.dungpham.tuneintest.TuneinApplication;
 import com.example.dungpham.tuneintest.adapter.ElementAdapter;
 import com.example.dungpham.tuneintest.model.BaseElement;
 import com.example.dungpham.tuneintest.service.ReactiveApiService;
@@ -19,17 +20,20 @@ import com.example.dungpham.tuneintest.service.ReactiveApiService;
 import java.util.List;
 
 import butterknife.ButterKnife;
+import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 
-public class LinkActivity extends AppCompatActivity {
+public class LinkActivity extends AppCompatActivity implements ElementAdapter.EvictCacheListener{
     private static final String LINK = "link";
     private static final String TITLE = "title";
     public static final String DEFAULT_TITLE = "TuneIn";
     private ElementAdapter mAdapter;
     private String mLink;
     private String mTitle;
+    private Subscription mSubscription;
 
     public static void launchLinkActivity(Context context, String link, String title) {
         Intent intent = new Intent(context, LinkActivity.class);
@@ -50,6 +54,7 @@ public class LinkActivity extends AppCompatActivity {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         mAdapter = new ElementAdapter(this);
+        mAdapter.setEvictCacheListener(this);
         recyclerView.setAdapter(mAdapter);
 
         setupActionBar(mTitle);
@@ -58,25 +63,40 @@ public class LinkActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        ReactiveApiService.getInstance().getLink(mLink)
-                .subscribeOn(Schedulers.newThread())
+        mSubscription = getObserver().subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Subscriber<List<BaseElement>>() {
-                    @Override
-                    public void onCompleted() {
+                .subscribe((Subscriber<? super List<BaseElement>>) getSubscription());
+    }
 
-                    }
+    private Observable<List<BaseElement>> getObserver() {
+        if (TuneinApplication.getInstance().getListElementObserver() == null) {
+            TuneinApplication.getInstance().setListElementObserver(ReactiveApiService.getInstance().getLink(mLink).cache());
+        }
+        return TuneinApplication.getInstance().getListElementObserver();
+    }
 
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.e(ReactiveApiService.TAG, e.toString());
-                    }
+    private Subscription getSubscription() {
+        return new Subscriber<List<BaseElement>>() {
+            @Override
+            public void onCompleted() {
+            }
 
-                    @Override
-                    public void onNext(List<BaseElement> elements) {
-                        mAdapter.setData(elements);
-                    }
-                });
+            @Override
+            public void onError(Throwable e) {
+                Log.e(ReactiveApiService.TAG, e.toString());
+            }
+
+            @Override
+            public void onNext(List<BaseElement> elements) {
+                mAdapter.setData(elements);
+            }
+        };
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mSubscription.unsubscribe();
     }
 
     @Override
@@ -100,5 +120,16 @@ public class LinkActivity extends AppCompatActivity {
                 getSupportActionBar().setDisplayHomeAsUpEnabled(false);
             }
         }
+    }
+
+    @Override
+    public void evictCache() {
+        TuneinApplication.getInstance().setListElementObserver(null);
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        evictCache();
     }
 }

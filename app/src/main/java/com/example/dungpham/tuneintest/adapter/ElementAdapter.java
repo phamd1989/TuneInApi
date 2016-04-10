@@ -11,7 +11,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.dungpham.tuneintest.R;
-import com.example.dungpham.tuneintest.TuneinApplication;
 import com.example.dungpham.tuneintest.activity.LinkActivity;
 import com.example.dungpham.tuneintest.model.BaseElement;
 import com.facebook.drawee.view.SimpleDraweeView;
@@ -28,8 +27,17 @@ import butterknife.ButterKnife;
 public class ElementAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     List<BaseElement> mData;
     Activity mActivity;
+    EvictCacheListener mListener;
     private final int HEADER = 0;
     private final int ITEM = 1;
+
+    public interface EvictCacheListener {
+        void evictCache();
+    }
+
+    public void setEvictCacheListener(EvictCacheListener listener) {
+        this.mListener = listener;
+    }
 
     public ElementAdapter(Activity activity) {
         mData = new ArrayList<>();
@@ -89,6 +97,7 @@ public class ElementAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                     if (element.getType() != null && !"audio".equals(element.getType())) {
                         String[] parts = element.getURL().split("/");
                         String url = parts[parts.length - 1] + "&render=json";
+                        if (mListener != null) mListener.evictCache();
                         LinkActivity.launchLinkActivity(mActivity, url, element.getText());
                     } else {
                         Toast.makeText(mActivity.getApplicationContext(), "Station playing ...", Toast.LENGTH_SHORT).show();
